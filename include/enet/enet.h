@@ -465,6 +465,7 @@ ENET_API int        enet_host_check_events (ENetHost *, ENetEvent *);
 ENET_API int        enet_peer_check_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event);
 ENET_API int        enet_peer_peek_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event);
 ENET_API int        enet_host_service (ENetHost *, ENetEvent *, enet_uint32);
+ENET_API int        enet_host_service_one_outbound (ENetHost *, ENetEvent *);
 ENET_API void       enet_host_flush (ENetHost *);
 ENET_API void       enet_host_broadcast (ENetHost *, enet_uint8, ENetPacket *);
 ENET_API void       enet_host_bandwidth_limit (ENetHost *, enet_uint32, enet_uint32);

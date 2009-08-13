@@ -72,7 +72,7 @@ static int enet_peer_service_or_peek_events(ENetHost * host, ENetPeer * currentP
             enet_list_empty (& channel -> incomingUnreliableCommands))
           continue;
 
-        event -> packet = enet_peer_receive (currentPeer, channel - currentPeer -> channels);
+        event -> packet = (only_peek?enet_peer_peek_receive:enet_peer_receive) (currentPeer, channel - currentPeer -> channels);
         if (event -> packet == NULL)
           continue;
           
@@ -1589,6 +1589,81 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
        
        host -> serviceTime = enet_time_get ();
     } while (waitCondition == ENET_SOCKET_WAIT_RECEIVE);
+
+    return 0; 
+}
+
+
+/** Shuttles outbound packets and processes the incoming socket, placing packets on queues    
+
+    @param host    host to service
+    @param event   an event structure where event details will be placed if one occurs
+                   if event == NULL then no events will be delivered
+    @retval > 0 if an event occurred within the specified time limit
+    @retval 0 if no event occurred
+    @retval < 0 on failure
+    @remarks enet_host_service should be called fairly regularly for adequate performance
+    @ingroup host
+*/
+int
+enet_host_service_one_outbound (ENetHost * host, ENetEvent * event)
+{
+    enet_uint32 waitCondition;
+
+    if (event != NULL)
+    {
+        event -> type = ENET_EVENT_TYPE_NONE;
+        event -> peer = NULL;
+        event -> packet = NULL;
+
+    }
+
+    host -> serviceTime = enet_time_get ();
+    
+    if (ENET_TIME_DIFFERENCE (host -> serviceTime, host -> bandwidthThrottleEpoch) >= ENET_HOST_BANDWIDTH_THROTTLE_INTERVAL)
+        enet_host_bandwidth_throttle (host);
+    
+    switch (enet_protocol_send_outgoing_commands (host, event, 1))
+    {
+      case 1:
+        return 1;
+        
+      case -1:
+        perror ("Error sending outgoing packets");
+        
+        return -1;
+        
+      default:
+        break;
+    }
+    
+    switch (enet_protocol_receive_incoming_commands (host, event))
+    {
+      case 1:
+        return 1;
+        
+      case -1:
+        perror ("Error receiving incoming packets");
+        
+        return -1;
+        
+      default:
+        break;
+    }
+    
+    switch (enet_protocol_send_outgoing_commands (host, event, 1))
+    {
+      case 1:
+        return 1;
+        
+      case -1:
+        perror ("Error sending outgoing packets");
+        
+        return -1;
+        
+      default:
+        break;
+    }
 
     return 0; 
 }

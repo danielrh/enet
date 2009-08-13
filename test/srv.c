@@ -33,10 +33,25 @@ int main(int argc, char**argv) {
         exit (EXIT_FAILURE);
     }
     ENetEvent event;
-    
+    ENetPeer *peer=NULL;
+    int even=1;
+    int peekcount=0;
     /* Wait up to 1000 milliseconds for an event. */
-    while (enet_host_service (server, & event, 1000) >=0)
+    while (1)
     {
+        if (even){
+            enet_host_service_one_outbound (server, & event);
+        }else if (peer!=NULL) {
+
+            if (enet_peer_peek_events(server,  peer,  &event)) {
+                printf ("peeked\n");
+                ++peekcount;
+                if (peekcount>10)
+                    enet_peer_check_events(server,  peer,  &event); 
+            }
+
+        }
+        even=!even;
         if (event.type){
             printf ("%d\n",event.type);
         }
@@ -49,6 +64,7 @@ int main(int argc, char**argv) {
 
             /* Store any relevant client information here. */
             event.peer -> data = "Client information";
+            peer=event.peer;
             {
                 ENetPacket * packet = enet_packet_create ("packet", 
                                                           strlen ("packet") + 1, 
@@ -72,7 +88,7 @@ int main(int argc, char**argv) {
                     event.channelID);
 
             /* Clean up the packet now that we're done using it. */
-            enet_packet_destroy (event.packet);
+            /*enet_packet_destroy (event.packet);*/
             
             continue;
            
