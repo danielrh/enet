@@ -463,6 +463,7 @@ ENET_API void       enet_host_destroy (ENetHost *);
 ENET_API ENetPeer * enet_host_connect (ENetHost *, const ENetAddress *, size_t);
 ENET_API int        enet_host_check_events (ENetHost *, ENetEvent *);
 ENET_API int        enet_peer_check_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event);
+ENET_API int        enet_peer_peek_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event);
 ENET_API int        enet_host_service (ENetHost *, ENetEvent *, enet_uint32);
 ENET_API void       enet_host_flush (ENetHost *);
 ENET_API void       enet_host_broadcast (ENetHost *, enet_uint8, ENetPacket *);
@@ -471,6 +472,7 @@ extern   void       enet_host_bandwidth_throttle (ENetHost *);
 
 ENET_API int                 enet_peer_send (ENetPeer *, enet_uint8, ENetPacket *);
 ENET_API ENetPacket *        enet_peer_receive (ENetPeer *, enet_uint8);
+ENET_API ENetPacket *        enet_peer_peek_receive (ENetPeer *, enet_uint8);
 ENET_API void                enet_peer_ping (ENetPeer *);
 ENET_API void                enet_peer_reset (ENetPeer *);
 ENET_API void                enet_peer_disconnect (ENetPeer *, enet_uint32);

@@ -172,13 +172,8 @@ enet_peer_send (ENetPeer * peer, enet_uint8 channelID, ENetPacket * packet)
    return 0;
 }
 
-/** Attempts to dequeue any incoming queued packet.
-    @param peer peer to dequeue packets from
-    @param channelID channel on which to receive
-    @returns a pointer to the packet, or NULL if there are no available incoming queued packets
-*/
-ENetPacket *
-enet_peer_receive (ENetPeer * peer, enet_uint8 channelID)
+static ENetPacket *
+enet_peer_receive_or_peek (ENetPeer * peer, enet_uint8 channelID, int only_peek)
 {
    ENetChannel * channel = & peer -> channels [channelID];
    ENetIncomingCommand * incomingCommand = NULL;
@@ -203,28 +198,51 @@ enet_peer_receive (ENetPeer * peer, enet_uint8 channelID)
       if (incomingCommand -> fragmentsRemaining > 0 ||
           incomingCommand -> reliableSequenceNumber != (enet_uint16) (channel -> incomingReliableSequenceNumber + 1))
         return NULL;
+      if (!only_peek) {
 
-      channel -> incomingReliableSequenceNumber = incomingCommand -> reliableSequenceNumber;
+          channel -> incomingReliableSequenceNumber = incomingCommand -> reliableSequenceNumber;
 
-      if (incomingCommand -> fragmentCount > 0)
-        channel -> incomingReliableSequenceNumber += incomingCommand -> fragmentCount - 1;
+          if (incomingCommand -> fragmentCount > 0)
+              channel -> incomingReliableSequenceNumber += incomingCommand -> fragmentCount - 1;
+      }
    }
 
    if (incomingCommand == NULL)
      return NULL;
 
-   enet_list_remove (& incomingCommand -> incomingCommandList);
-
    packet = incomingCommand -> packet;
 
-   -- packet -> referenceCount;
+   if (!only_peek) {
+       enet_list_remove (& incomingCommand -> incomingCommandList);
 
-   if (incomingCommand -> fragments != NULL)
-     enet_free (incomingCommand -> fragments);
+       -- packet -> referenceCount;
 
-   enet_free (incomingCommand);
+       if (incomingCommand -> fragments != NULL)
+           enet_free (incomingCommand -> fragments);
 
+       enet_free (incomingCommand);
+   }
    return packet;
+}
+
+/** Attempts to dequeue any incoming queued packet.
+    @param peer peer to dequeue packets from
+    @param channelID channel on which to receive
+    @returns a pointer to the packet, or NULL if there are no available incoming queued packets
+*/
+ENetPacket *
+enet_peer_receive (ENetPeer * peer, enet_uint8 channelID) {
+   return enet_peer_receive_or_peek(peer, channelID, 0);
+}
+
+/** Attempts to dequeue any incoming queued packet.
+    @param peer peer to dequeue packets from
+    @param channelID channel on which to receive
+    @returns a pointer to the packet, or NULL if there are no available incoming queued packets
+*/
+ENetPacket *
+enet_peer_peek_receive (ENetPeer * peer, enet_uint8 channelID) {
+   return enet_peer_receive_or_peek(peer,channelID,1);
 }
 
 static void

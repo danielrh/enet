@@ -32,7 +32,7 @@ enet_protocol_command_size (enet_uint8 commandNumber)
 }
 
 
-int enet_peer_check_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event)
+static int enet_peer_service_or_peek_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event, int only_peek)
 {
     ENetChannel * channel;
     switch (currentPeer -> state)
@@ -47,16 +47,17 @@ int enet_peer_check_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * 
         return 1;
         
     case ENET_PEER_STATE_ZOMBIE:
-        host -> recalculateBandwidthLimits = 1;
-
         event -> type = ENET_EVENT_TYPE_DISCONNECT;
         event -> peer = currentPeer;
         event -> data = currentPeer -> disconnectData;
+        if (!only_peek) {
 
-        enet_peer_reset (currentPeer);
+            host -> recalculateBandwidthLimits = 1;
 
-        host -> lastServicedPeer = currentPeer;
+            enet_peer_reset (currentPeer);
 
+            host -> lastServicedPeer = currentPeer;
+        }
         return 1;
     }
 
@@ -79,11 +80,19 @@ int enet_peer_check_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * 
         event -> peer = currentPeer;
         event -> channelID = (enet_uint8) (channel - currentPeer -> channels);
 
-        host -> lastServicedPeer = currentPeer;
+        if (!only_peek)
+          host -> lastServicedPeer = currentPeer;
 
         return 1;
     }
     return 0;
+}
+
+int enet_peer_peek_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event) {
+    return enet_peer_service_or_peek_events(host, currentPeer, event, 1);    
+}
+int enet_peer_check_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event) {
+    return enet_peer_service_or_peek_events(host, currentPeer, event, 0);    
 }
 
 static int
