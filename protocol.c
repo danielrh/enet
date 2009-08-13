@@ -39,8 +39,9 @@ static int enet_peer_service_or_peek_events(ENetHost * host, ENetPeer * currentP
     {
     case ENET_PEER_STATE_CONNECTION_PENDING:
     case ENET_PEER_STATE_CONNECTION_SUCCEEDED:
-        currentPeer -> state = ENET_PEER_STATE_CONNECTED;
-
+        if (!only_peek) 
+          currentPeer -> state = ENET_PEER_STATE_CONNECTED;
+      
         event -> type = ENET_EVENT_TYPE_CONNECT;
         event -> peer = currentPeer;
 
