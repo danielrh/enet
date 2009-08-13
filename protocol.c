@@ -31,12 +31,66 @@ enet_protocol_command_size (enet_uint8 commandNumber)
     return commandSizes [commandNumber & ENET_PROTOCOL_COMMAND_MASK];
 }
 
+
+int enet_peer_check_events(ENetHost * host, ENetPeer * currentPeer, ENetEvent * event)
+{
+    ENetChannel * channel;
+    switch (currentPeer -> state)
+    {
+    case ENET_PEER_STATE_CONNECTION_PENDING:
+    case ENET_PEER_STATE_CONNECTION_SUCCEEDED:
+        currentPeer -> state = ENET_PEER_STATE_CONNECTED;
+
+        event -> type = ENET_EVENT_TYPE_CONNECT;
+        event -> peer = currentPeer;
+
+        return 1;
+        
+    case ENET_PEER_STATE_ZOMBIE:
+        host -> recalculateBandwidthLimits = 1;
+
+        event -> type = ENET_EVENT_TYPE_DISCONNECT;
+        event -> peer = currentPeer;
+        event -> data = currentPeer -> disconnectData;
+
+        enet_peer_reset (currentPeer);
+
+        host -> lastServicedPeer = currentPeer;
+
+        return 1;
+    }
+
+    if (currentPeer -> state != ENET_PEER_STATE_CONNECTED)
+      return 0;
+
+    for (channel = currentPeer -> channels;
+         channel < & currentPeer -> channels [currentPeer -> channelCount];
+         ++ channel)
+    {
+        if (enet_list_empty (& channel -> incomingReliableCommands) &&
+            enet_list_empty (& channel -> incomingUnreliableCommands))
+          continue;
+
+        event -> packet = enet_peer_receive (currentPeer, channel - currentPeer -> channels);
+        if (event -> packet == NULL)
+          continue;
+          
+        event -> type = ENET_EVENT_TYPE_RECEIVE;
+        event -> peer = currentPeer;
+        event -> channelID = (enet_uint8) (channel - currentPeer -> channels);
+
+        host -> lastServicedPeer = currentPeer;
+
+        return 1;
+    }
+    return 0;
+}
+
 static int
 enet_protocol_dispatch_incoming_commands (ENetHost * host, ENetEvent * event)
 {
     ENetPeer * currentPeer = host -> lastServicedPeer;
-    ENetChannel * channel;
-
+    int retval;
     do
     {
        ++ currentPeer;
@@ -44,54 +98,9 @@ enet_protocol_dispatch_incoming_commands (ENetHost * host, ENetEvent * event)
        if (currentPeer >= & host -> peers [host -> peerCount])
          currentPeer = host -> peers;
 
-       switch (currentPeer -> state)
-       {
-       case ENET_PEER_STATE_CONNECTION_PENDING:
-       case ENET_PEER_STATE_CONNECTION_SUCCEEDED:
-           currentPeer -> state = ENET_PEER_STATE_CONNECTED;
+       if ((retval=enet_peer_check_events(host,currentPeer,event))!=0)
+           return retval;
 
-           event -> type = ENET_EVENT_TYPE_CONNECT;
-           event -> peer = currentPeer;
-
-           return 1;
-           
-       case ENET_PEER_STATE_ZOMBIE:
-           host -> recalculateBandwidthLimits = 1;
-
-           event -> type = ENET_EVENT_TYPE_DISCONNECT;
-           event -> peer = currentPeer;
-           event -> data = currentPeer -> disconnectData;
-
-           enet_peer_reset (currentPeer);
-
-           host -> lastServicedPeer = currentPeer;
-
-           return 1;
-       }
-
-       if (currentPeer -> state != ENET_PEER_STATE_CONNECTED)
-         continue;
-
-       for (channel = currentPeer -> channels;
-            channel < & currentPeer -> channels [currentPeer -> channelCount];
-            ++ channel)
-       {
-           if (enet_list_empty (& channel -> incomingReliableCommands) &&
-               enet_list_empty (& channel -> incomingUnreliableCommands))
-             continue;
-
-           event -> packet = enet_peer_receive (currentPeer, channel - currentPeer -> channels);
-           if (event -> packet == NULL)
-             continue;
-             
-           event -> type = ENET_EVENT_TYPE_RECEIVE;
-           event -> peer = currentPeer;
-           event -> channelID = (enet_uint8) (channel - currentPeer -> channels);
-
-           host -> lastServicedPeer = currentPeer;
-
-           return 1;
-       }
     } while (currentPeer != host -> lastServicedPeer);
 
     return 0;
