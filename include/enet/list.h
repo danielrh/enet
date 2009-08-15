@@ -11,6 +11,7 @@ typedef struct _ENetListNode
 {
    struct _ENetListNode * next;
    struct _ENetListNode * previous;
+   unsigned short byte_size;
 } ENetListNode;
 
 typedef ENetListNode * ENetListIterator;
@@ -18,14 +19,17 @@ typedef ENetListNode * ENetListIterator;
 typedef struct _ENetList
 {
    ENetListNode sentinel;
+   size_t byte_size;
 } ENetList;
 
 extern void enet_list_clear (ENetList *);
 
-extern ENetListIterator enet_list_insert (ENetListIterator, void *);
-extern void * enet_list_remove (ENetListIterator);
+extern ENetListIterator enet_list_insert (ENetList *, ENetListIterator, void *, unsigned short size);
+extern void * enet_list_remove (ENetList *, ENetListIterator);
 
 extern size_t enet_list_size (ENetList *);
+
+extern size_t enet_list_byte_size (ENetList *);
 
 #define enet_list_begin(list) ((list) -> sentinel.next)
 #define enet_list_end(list) (& (list) -> sentinel)

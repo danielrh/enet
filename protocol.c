@@ -162,7 +162,7 @@ enet_protocol_remove_sent_unreliable_commands (ENetPeer * peer)
     {
         outgoingCommand = (ENetOutgoingCommand *) enet_list_front (& peer -> sentUnreliableCommands);
         
-        enet_list_remove (& outgoingCommand -> outgoingCommandList);
+        enet_list_remove (& peer -> sentUnreliableCommands, & outgoingCommand -> outgoingCommandList);
 
         if (outgoingCommand -> packet != NULL)
         {
@@ -227,7 +227,7 @@ enet_protocol_remove_sent_reliable_command (ENetPeer * peer, enet_uint16 reliabl
 
     commandNumber = (ENetProtocolCommand) (outgoingCommand -> command.header.command & ENET_PROTOCOL_COMMAND_MASK);
     
-    enet_list_remove (& outgoingCommand -> outgoingCommandList);
+    enet_list_remove ( & peer -> sentReliableCommands, & outgoingCommand -> outgoingCommandList);
 
     if (outgoingCommand -> packet != NULL)
     {
@@ -1067,7 +1067,7 @@ enet_protocol_send_acknowledgements (ENetHost * host, ENetPeer * peer)
        if ((acknowledgement -> command.header.command & ENET_PROTOCOL_COMMAND_MASK) == ENET_PROTOCOL_COMMAND_DISCONNECT)
          peer -> state = ENET_PEER_STATE_ZOMBIE;
 
-       enet_list_remove (& acknowledgement -> acknowledgementList);
+       enet_list_remove ( &peer -> acknowledgements, & acknowledgement -> acknowledgementList);
        enet_free (acknowledgement);
 
        ++ command;
@@ -1120,7 +1120,7 @@ enet_protocol_send_unreliable_outgoing_commands (ENetHost * host, ENetPeer * pee
              if (outgoingCommand -> packet -> referenceCount == 0)
                enet_packet_destroy (outgoingCommand -> packet);
          
-             enet_list_remove (& outgoingCommand -> outgoingCommandList);
+             enet_list_remove ( & peer -> outgoingUnreliableCommands, & outgoingCommand -> outgoingCommandList);
              enet_free (outgoingCommand);
            
              continue;
@@ -1134,7 +1134,7 @@ enet_protocol_send_unreliable_outgoing_commands (ENetHost * host, ENetPeer * pee
 
        * command = outgoingCommand -> command;
        
-       enet_list_remove (& outgoingCommand -> outgoingCommandList);
+       enet_list_remove (& peer -> outgoingUnreliableCommands, & outgoingCommand -> outgoingCommandList);
 
        if (outgoingCommand -> packet != NULL)
        {
@@ -1145,7 +1145,7 @@ enet_protocol_send_unreliable_outgoing_commands (ENetHost * host, ENetPeer * pee
 
           host -> packetSize += buffer -> dataLength;
 
-          enet_list_insert (enet_list_end (& peer -> sentUnreliableCommands), outgoingCommand);
+          enet_list_insert ( & peer -> sentUnreliableCommands, enet_list_end (& peer -> sentUnreliableCommands), outgoingCommand, sizeof(*outgoingCommand) + buffer -> dataLength );
        }
        else
          enet_free (outgoingCommand);
@@ -1203,7 +1203,9 @@ enet_protocol_check_timeouts (ENetHost * host, ENetPeer * peer, ENetEvent * even
 
        outgoingCommand -> roundTripTimeout *= 2;
 
-       enet_list_insert (insertPosition, enet_list_remove (& outgoingCommand -> outgoingCommandList));
+       enet_uint16 size=outgoingCommand -> outgoingCommandList.byte_size;
+
+       enet_list_insert (& peer -> outgoingReliableCommands, insertPosition, enet_list_remove (& peer -> sentReliableCommands, & outgoingCommand -> outgoingCommandList), size );
 
        if (currentCommand == enet_list_begin (& peer -> sentReliableCommands) &&
            ! enet_list_empty (& peer -> sentReliableCommands))
@@ -1286,8 +1288,12 @@ enet_protocol_send_reliable_outgoing_commands (ENetHost * host, ENetPeer * peer)
        if (enet_list_empty (& peer -> sentReliableCommands))
          peer -> nextTimeout = host -> serviceTime + outgoingCommand -> roundTripTimeout;
 
-       enet_list_insert (enet_list_end (& peer -> sentReliableCommands),
-                         enet_list_remove (& outgoingCommand -> outgoingCommandList));
+       enet_uint16 byteSize =  outgoingCommand -> outgoingCommandList.byte_size;
+
+       enet_list_insert (& peer -> sentReliableCommands,
+                         enet_list_end (& peer -> sentReliableCommands),
+                         enet_list_remove (& peer -> outgoingReliableCommands, & outgoingCommand -> outgoingCommandList),
+                         byteSize );
 
        outgoingCommand -> sentTime = host -> serviceTime;
 
