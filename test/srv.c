@@ -39,10 +39,10 @@ int main(int argc, char**argv) {
     /* Wait up to 1000 milliseconds for an event. */
     while (1)
     {
+
         if (even){
             enet_host_service_one_outbound (server, & event);
         }else if (peer!=NULL) {
-
             if (enet_peer_peek_events(server,  peer,  &event)) {
                 printf ("peeked\n");
                 ++peekcount;

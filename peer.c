@@ -89,6 +89,29 @@ enet_peer_throttle (ENetPeer * peer, enet_uint32 rtt)
     return 0;
 }
 
+size_t
+enet_peer_send_packet_size (ENetPeer * peer, ENetPacket *packet)
+{
+    size_t fragmentLength = peer -> mtu - sizeof (ENetProtocolHeader) - sizeof (ENetProtocolSendFragment); 
+    size_t packetLength = packet -> dataLength;
+    if ( packetLength>fragmentLength )
+        return (packetLength/fragmentLength) * (sizeof (ENetProtocolHeader) + sizeof (ENetProtocolSendFragment))
+            + ((packetLength%fragmentLength) ? (sizeof (ENetProtocolHeader) + sizeof (ENetProtocolSendFragment)) : 0 )
+            + packetLength;
+    else
+        return packetLength + sizeof(ENetProtocolHeader) + sizeof (ENetProtocolSendUnreliable);
+}
+
+size_t
+enet_peer_send_buffer_size (ENetPeer *peer)
+{
+    return peer -> acknowledgements.byte_size
+        + peer -> sentReliableCommands.byte_size
+        + peer -> sentUnreliableCommands.byte_size
+        + peer -> outgoingReliableCommands.byte_size
+        + peer -> outgoingUnreliableCommands.byte_size;
+}
+
 /** Queues a packet to be sent.
     @param peer destination for the packet
     @param channelID channel on which to send

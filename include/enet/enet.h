@@ -471,6 +471,8 @@ ENET_API void       enet_host_broadcast (ENetHost *, enet_uint8, ENetPacket *);
 ENET_API void       enet_host_bandwidth_limit (ENetHost *, enet_uint32, enet_uint32);
 extern   void       enet_host_bandwidth_throttle (ENetHost *);
 
+ENET_API size_t                 enet_peer_send_packet_size (ENetPeer *, ENetPacket *);
+ENET_API size_t                 enet_peer_send_buffer_size (ENetPeer *);
 ENET_API int                 enet_peer_send (ENetPeer *, enet_uint8, ENetPacket *);
 ENET_API ENetPacket *        enet_peer_receive (ENetPeer *, enet_uint8);
 ENET_API ENetPacket *        enet_peer_peek_receive (ENetPeer *, enet_uint8);
